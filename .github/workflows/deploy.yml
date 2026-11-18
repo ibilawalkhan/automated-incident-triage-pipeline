@@ -1,0 +1,70 @@
+name: Deploy Incident Triage Lambdas
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/chaos_lambda/**"
+      - "src/responder_lambda/**"
+      - ".github/workflows/deploy.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: incident-triage-lambda-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Lambda Functions
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Package Lambda functions
+        run: |
+          mkdir -p dist
+
+          zip -j dist/chaos_lambda.zip \
+            src/chaos_lambda/lambda_function.py
+
+          zip -j dist/responder_lambda.zip \
+            src/responder_lambda/lambda_function.py
+
+      - name: Deploy Chaos Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name incident-triage-chaos-lambda \
+            --zip-file fileb://dist/chaos_lambda.zip \
+            --region "$AWS_DEFAULT_REGION"
+
+          aws lambda wait function-updated-v2 \
+            --function-name incident-triage-chaos-lambda \
+            --region "$AWS_DEFAULT_REGION"
+
+      - name: Deploy Responder Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name incident-triage-responder-lambda \
+            --zip-file fileb://dist/responder_lambda.zip \
+            --region "$AWS_DEFAULT_REGION"
+
+          aws lambda wait function-updated-v2 \
+            --function-name incident-triage-responder-lambda \
+            --region "$AWS_DEFAULT_REGION"

@@ -80,6 +80,48 @@ jobs:
             --function-name incident-triage-responder-lambda \
             --region "$AWS_DEFAULT_REGION"
 
+      - name: Verify deployed Lambda functions
+        shell: bash
+        run: |
+          FUNCTIONS=(
+            "incident-triage-chaos-lambda"
+            "incident-triage-responder-lambda"
+          )
+
+          for FUNCTION in "${FUNCTIONS[@]}"; do
+            echo "Verifying $FUNCTION..."
+
+            CONFIG=$(aws lambda get-function-configuration \
+              --function-name "$FUNCTION" \
+              --region "$AWS_DEFAULT_REGION")
+
+            STATE=$(echo "$CONFIG" | jq -r '.State')
+            RUNTIME=$(echo "$CONFIG" | jq -r '.Runtime')
+            HANDLER=$(echo "$CONFIG" | jq -r '.Handler')
+            LAST_UPDATE_STATUS=$(echo "$CONFIG" | jq -r '.LastUpdateStatus')
+
+            echo "State: $STATE"
+            echo "Runtime: $RUNTIME"
+            echo "Handler: $HANDLER"
+            echo "Last update: $LAST_UPDATE_STATUS"
+
+            test "$STATE" = "Active"
+            test "$RUNTIME" = "python3.13"
+            test "$HANDLER" = "lambda_function.lambda_handler"
+            test "$LAST_UPDATE_STATUS" = "Successful"
+
+            CODE_HASH=$(aws lambda get-function \
+              --function-name "$FUNCTION" \
+              --region "$AWS_DEFAULT_REGION" \
+              --query 'Configuration.CodeSha256' \
+              --output text)
+
+            test -n "$CODE_HASH"
+            echo "Code SHA-256: $CODE_HASH"
+
+            echo "$FUNCTION verification successful."
+          done
+
       - name: Deployment completed
         run: |
-          echo "Both Lambda functions have been deployed successfully."
+          echo "Both Lambda functions deployed and verified successfully."

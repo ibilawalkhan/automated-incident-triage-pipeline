@@ -5,10 +5,11 @@ on:
     branches:
       - main
     paths:
-      - "src/chaos_lambda/**"
-      - "src/responder_lambda/**"
+      - "src/**"
       - "tests/**"
-      - ".github/workflows/ci.yml"
+      - "requirements.txt"
+      - "pytest.ini"
+      - ".github/workflows/**"
 
   pull_request:
     branches:
@@ -20,8 +21,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Validate Python Lambdas
+  ci:
+    name: CI - Test, Lint, Security and Package
     runs-on: ubuntu-latest
 
     steps:
@@ -32,16 +33,75 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies and quality tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install ruff pip-audit
 
       - name: Check Python syntax
         run: |
           python -m compileall -q src tests
 
-      - name: Install testing dependencies
+      - name: Run Ruff linting
         run: |
-          python -m pip install --upgrade pip
-          pip install pytest
+          python -m ruff check src tests
 
       - name: Run unit tests
         run: |
           python -m pytest -v tests/
+
+      - name: Scan dependencies for vulnerabilities
+        run: |
+          python -m pip_audit -r requirements.txt
+
+      - name: Package Lambda functions
+        run: |
+          mkdir -p dist/chaos_lambda
+          mkdir -p dist/responder_lambda
+
+          zip -j dist/chaos_lambda.zip \
+            src/chaos_lambda/lambda_function.py
+
+          zip -j dist/responder_lambda.zip \
+            src/responder_lambda/lambda_function.py
+
+      - name: Validate Lambda ZIP packages
+        run: |
+          python - <<'PY'
+          import zipfile
+
+          packages = {
+              "dist/chaos_lambda.zip": "lambda_function.py",
+              "dist/responder_lambda.zip": "lambda_function.py",
+          }
+
+          for archive, expected_file in packages.items():
+              with zipfile.ZipFile(archive, "r") as zf:
+                  files = zf.namelist()
+
+                  assert files == [expected_file], (
+                      f"Unexpected contents in {archive}: {files}"
+                  )
+
+                  assert zf.testzip() is None, (
+                      f"Corrupt ZIP archive: {archive}"
+                  )
+
+              print(f"Validated: {archive}")
+
+          print("All Lambda packages validated successfully.")
+          PY
+
+      - name: Upload Lambda deployment artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-packages
+          path: |
+            dist/chaos_lambda.zip
+            dist/responder_lambda.zip
+          retention-days: 7
+          if-no-files-found: error

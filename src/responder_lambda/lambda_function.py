@@ -20,7 +20,7 @@ def process_incident(record):
         raise ValueError("Message body contains invalid JSON") from error
 
     if not isinstance(incident, dict):
-        raise ValueError("Event must be a JSON object")
+        raise TypeError("Event must be a JSON object")
 
     if incident.get("source") != "aws.cloudwatch":
         raise ValueError("Unexpected event source")
@@ -31,24 +31,33 @@ def process_incident(record):
     detail = incident.get("detail")
 
     if not isinstance(detail, dict):
-        raise ValueError("Event detail is missing or invalid")
+        raise TypeError("Event detail is missing or invalid")
 
     alarm_name = detail.get("alarmName")
     state = detail.get("state")
     region = incident.get("region")
 
-    if not isinstance(alarm_name, str) or not alarm_name:
+    if not isinstance(alarm_name, str):
+        raise TypeError("Alarm name must be a string")
+
+    if not alarm_name:
         raise ValueError("Alarm name is missing")
 
     if not isinstance(state, dict):
-        raise ValueError("Alarm state is missing or invalid")
+        raise TypeError("Alarm state is missing or invalid")
 
     alarm_state = state.get("value")
 
-    if not isinstance(alarm_state, str) or not alarm_state:
+    if not isinstance(alarm_state, str):
+        raise TypeError("Alarm state value must be a string")
+
+    if not alarm_state:
         raise ValueError("Alarm state value is missing")
 
-    if not isinstance(region, str) or not region:
+    if not isinstance(region, str):
+        raise TypeError("AWS region must be a string")
+
+    if not region:
         raise ValueError("AWS region is missing")
 
     logger.info("Incident processed successfully.")

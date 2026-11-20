@@ -1,4 +1,19 @@
+# Python virtual environments
+.venv/
+venv/
+
+# Python compiled files
 __pycache__/
 *.py[cod]
-.venv/
+*$py.class
+
+# Pytest cache
+.pytest_cache/
+
+# Distribution and build files
 dist/
+build/
+*.egg-info/
+
+ci.yml.backup
+deploy.yml.backup

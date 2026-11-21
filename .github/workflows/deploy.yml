@@ -80,6 +80,8 @@ jobs:
             --function-name incident-triage-responder-lambda \
             --region "$AWS_DEFAULT_REGION"
 
+      # Verify both Lambda functions were deployed successfully
+      # and have the expected AWS configuration.
       - name: Verify deployed Lambda functions
         shell: bash
         run: |

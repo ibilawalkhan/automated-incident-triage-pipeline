@@ -1,5 +1,6 @@
 name: Deploy Incident Triage Lambdas
 
+# Trigger CD when the CI workflow finishes.
 on:
   workflow_run:
     workflows:
@@ -7,11 +8,14 @@ on:
     types:
       - completed
 
+# Grant only the permissions required to download CI artifacts
+# and authenticate with AWS through GitHub OIDC.
 permissions:
   actions: read
   contents: read
   id-token: write
 
+# Prevent overlapping deployments of the same Lambda functions.
 concurrency:
   group: incident-triage-lambda-deployment
   cancel-in-progress: false
@@ -20,8 +24,8 @@ jobs:
   deploy:
     name: Deploy Lambda Functions
 
-    # Deploy only after successful CI on a push to main.
-    # Pull requests, failed runs and manual CI runs cannot deploy.
+    # Deploy only after successful CI triggered by a push to main
+    # from the same repository. PR and manual CI runs cannot deploy.
     if: >-
       ${{
         github.event.workflow_run.conclusion == 'success' &&

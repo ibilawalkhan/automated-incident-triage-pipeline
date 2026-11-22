@@ -1,5 +1,7 @@
 name: Incident Triage - CI Tests
 
+# Run CI on pushes to main, pull requests targeting main,
+# and manual triggers.
 on:
   push:
     branches:
@@ -17,6 +19,7 @@ on:
 
   workflow_dispatch:
 
+# CI only needs read access to the repository.
 permissions:
   contents: read
 
@@ -36,6 +39,7 @@ jobs:
           cache: "pip"
           cache-dependency-path: requirements.txt
 
+      # Install application dependencies and CI quality/security tools.
       - name: Install dependencies and quality tools
         run: |
           python -m pip install --upgrade pip
@@ -69,6 +73,7 @@ jobs:
           zip -j dist/responder_lambda.zip \
             src/responder_lambda/lambda_function.py
 
+      # Verify ZIP contents and integrity before uploading deployment artifacts.
       - name: Validate Lambda ZIP packages
         run: |
           python - <<'PY'
@@ -96,6 +101,8 @@ jobs:
           print("All Lambda packages validated successfully.")
           PY
 
+      # Upload validated packages so CD can reuse the exact artifacts
+      # produced by this CI run without rebuilding them.
       - name: Upload Lambda deployment artifacts
         uses: actions/upload-artifact@v4
         with:

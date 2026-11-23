@@ -16,7 +16,7 @@ def lambda_handler(event, context):
         "body": json.dumps(
             {
                 "message": "Chaos Lambda executed successfully!!!",
-                "project": "automated-incident-triage-pipeline...",
+                "project": "automated-incident-triage-pipeline",
             }
         ),
     }

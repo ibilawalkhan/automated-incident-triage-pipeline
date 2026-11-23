@@ -69,7 +69,7 @@ def process_incident(record):
 
 def lambda_handler(event, context):
 
-    logger.info("Incident Triage Responder started.")
+    logger.info("Incident Triage Responder started...")
 
     records = event.get("Records", [])
 
